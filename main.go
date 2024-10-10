@@ -28,8 +28,6 @@ func handleMigrate(args []string) {
     databasePtr := fs.String("database", "", "database connection url")
     fs.Parse(args)
 
-    fmt.Println(*sourcePtr, *databasePtr)
-
     migrater, err := internal.NewMigrater(*sourcePtr, *databasePtr)
     if err != nil {
         fmt.Println("error creating migrater")
