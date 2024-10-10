@@ -3,6 +3,7 @@ package main
 import (
 	// "flag"
 	"os"
+	"pg-migrate/internal"
 )
 
 func main() {
@@ -13,10 +14,13 @@ func main() {
 
     // migrater := newMigrater(*sourcePtr, *databasePtr)
 
-    folderPath := "./migrations"
+    source := "./migrations"
+    database := "postgres://postgres:admin@localhost:5431/dummy"
+    
 
-    _, err := newMigrater(folderPath, "")
+    _, err := internal.NewMigrater(source, database)
     if err != nil {
         os.Exit(1)
     }
+
 }
