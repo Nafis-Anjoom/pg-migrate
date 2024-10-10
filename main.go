@@ -55,6 +55,9 @@ func handleInit(args []string) {
         fmt.Println("error creating migration config file:", err)
         os.Exit(1)
     }
+
+    fmt.Printf("successfully created migraitons directory: %s\n", migrationsDirectory)
+    fmt.Println(`To get Started, edit the migrate.config file in the migrations directory. If using env varaible, then pass "$ENV_VARIABLE"`)
 }
 
 func handleMigrate(args []string) {
