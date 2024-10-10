@@ -14,11 +14,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type direction bool
+type Direction bool
 
 var (
-    UP direction = true
-    DOWN direction = false
+    UP Direction = true
+    DOWN Direction = false
 )
 
 var (
@@ -33,7 +33,7 @@ type migration struct{
     fileName string
     name string
     version int64
-    direction direction
+    direction Direction
 }
 
 type migrations []*migration
@@ -121,7 +121,7 @@ func parseMigrationEntry(source, fileName string) (*migration, error) {
     }
 
     name := parts[1]
-    var direction direction
+    var direction Direction
     
     switch parts[2] {
     case "up":
@@ -148,7 +148,7 @@ func parseMigrationEntry(source, fileName string) (*migration, error) {
     return migration, nil
 }
 
-func (m *migrater) RunMigrations(direction direction) error {
+func (m *migrater) RunMigrations(direction Direction) error {
     var migrations migrations
 
     if direction == UP {
