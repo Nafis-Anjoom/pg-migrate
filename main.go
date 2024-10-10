@@ -15,7 +15,7 @@ func main() {
 
     switch os.Args[1] {
     case "migrate":
-        handleMigrate(os.Args[2:])
+        handleMigrate(os.Args[1:])
     default:
         fmt.Println("invalid command")
         os.Exit(1)
@@ -23,10 +23,27 @@ func main() {
 }
 
 func handleMigrate(args []string) {
+    if len(args) == 1 {
+        fmt.Println("invalid command")
+        return
+    }
+
+    args = args[1:]
+
     fs := flag.NewFlagSet("migrate", flag.ExitOnError)
     sourcePtr := fs.String("source", "./", "source directory")
     databasePtr := fs.String("database", "", "database connection url")
     fs.Parse(args)
+
+    if *sourcePtr == "" {
+        fmt.Println("Invalid source directory:", *sourcePtr)
+        return
+    }
+
+    if *databasePtr == "" {
+        fmt.Println("Invalid database connection url:", *databasePtr)
+        return
+    }
 
     migrater, err := internal.NewMigrater(*sourcePtr, *databasePtr)
     if err != nil {
@@ -34,5 +51,5 @@ func handleMigrate(args []string) {
         return
     }
 
-    migrater.RunMigrations(internal.DOWN)
+    migrater.RunMigrations(internal.UP)
 }
