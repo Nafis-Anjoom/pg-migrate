@@ -15,7 +15,7 @@ func main() {
 
     switch os.Args[1] {
     case "migrate":
-        handleMigrate(os.Args[1:])
+        handleMigrate(os.Args[2:])
     default:
         fmt.Println("invalid command")
         os.Exit(1)
@@ -23,13 +23,6 @@ func main() {
 }
 
 func handleMigrate(args []string) {
-    if len(args) == 1 {
-        fmt.Println("invalid command")
-        return
-    }
-
-    args = args[1:]
-
     fs := flag.NewFlagSet("migrate", flag.ExitOnError)
     sourcePtr := fs.String("source", "./", "source directory")
     databasePtr := fs.String("database", "", "database connection url")
