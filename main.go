@@ -3,19 +3,20 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"pg-migrate/internal"
 )
 
 type Config struct {
-	CurrentVersion int    `json:"current_version"`
-	ConnURL        string `json:"conn_url"`
+	CurrentVersion  int    `json:"current_version"`
+	ConnURL         string `json:"conn_url"`
+	MigrationSource string `json:"migrations_source"`
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("invalid command")
+		log.Println("invalid command")
 		os.Exit(1)
 	}
 
@@ -25,61 +26,68 @@ func main() {
 	case "init":
 		handleInit(os.Args[2:])
 	default:
-		fmt.Println("invalid command")
+		log.Println("invalid command")
 		os.Exit(1)
 	}
 }
 
 func handleInit(args []string) {
 	fs := flag.NewFlagSet("init", flag.ExitOnError)
-	sourcePtr := fs.String("source", "./", "source directory")
+	sourcePtr := fs.String("source", "./migrations", "Source directory for migrations. If the directory does not exist, the program will automatically create a new one.")
 	fs.Parse(args)
 
-    migrationsDirectory := *sourcePtr + "/migrations"
-
-	err := os.Mkdir(migrationsDirectory, 0750)
+	err := os.Mkdir(*sourcePtr, 0750)
 	if err != nil && !os.IsExist(err) {
-        fmt.Println("error creating migration directory:", err)
-        os.Exit(1)
+		log.Fatal("error initializing migration directory:", err)
 	}
 
-    var config Config
-    json, err := json.MarshalIndent(config, "", "\t")
-    if err != nil {
-        fmt.Println("error encoding migration config to json:", err)
-        os.Exit(1)
-    }
+	var config Config
+    config.MigrationSource = *sourcePtr
+	json, err := json.MarshalIndent(config, "", "\t")
+	if err != nil {
+		log.Fatal("error encoding migration config to json:", err)
+	}
 
-    err = os.WriteFile(migrationsDirectory + "/migrate.config", json, 0660)
-    if err != nil {
-        fmt.Println("error creating migration config file:", err)
-        os.Exit(1)
-    }
+	err = os.WriteFile("./migrate.config", json, 0660)
+	if err != nil {
+		log.Fatal("error creating migration config file:", err)
+	}
 
-    fmt.Printf("successfully created migraitons directory: %s\n", migrationsDirectory)
-    fmt.Println(`To get Started, edit the migrate.config file in the migrations directory. If using env varaible, then pass "$ENV_VARIABLE"`)
+
+	log.Println("successfully initialized migraitons directory:", *sourcePtr)
+	log.Println(`To get Started, edit the migrate.config file in the current directory. If using env variable, then pass "$ENV_VARIABLE"`)
 }
 
 func handleMigrate(args []string) {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
-	sourcePtr := fs.String("source", "./", "source directory")
-	databasePtr := fs.String("database", "", "database connection url")
+	sourcePtr := fs.String("source", "./", "migrations directory")
 	fs.Parse(args)
 
-	if *sourcePtr == "" {
-		fmt.Println("Invalid source directory:", *sourcePtr)
-		return
-	}
-
-	if *databasePtr == "" {
-		fmt.Println("Invalid database connection url:", *databasePtr)
-		return
-	}
-
-	migrater, err := internal.NewMigrater(*sourcePtr, *databasePtr)
+	data, err := os.ReadFile(*sourcePtr + "/" + "migrate.config")
 	if err != nil {
-		fmt.Println("error creating migrater")
-		return
+		log.Fatal("error opening migrate.config: ", err)
+	}
+
+	var config Config
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		log.Fatal("invalid config file:", err)
+	}
+
+	if config.ConnURL == "" {
+		log.Fatal("missing database url")
+	}
+
+	var dbURL string
+	if config.ConnURL[0] == '$' {
+		dbURL = os.Getenv(dbURL)
+	} else {
+		dbURL = config.ConnURL
+	}
+
+	migrater, err := internal.NewMigrater(*sourcePtr, dbURL)
+	if err != nil {
+		log.Fatal("error creating migrater")
 	}
 
 	migrater.RunMigrations(internal.UP)
