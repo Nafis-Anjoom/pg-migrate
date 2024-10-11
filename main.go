@@ -53,17 +53,16 @@ func handleInit(args []string) {
 		log.Fatal("error creating migration config file:", err)
 	}
 
-
 	log.Println("successfully initialized migraitons directory:", *sourcePtr)
 	log.Println(`To get Started, edit the migrate.config file in the current directory. If using env variable, then pass "$ENV_VARIABLE"`)
 }
 
 func handleMigrate(args []string) {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
-	sourcePtr := fs.String("source", "./", "migrations directory")
+    configSrcPtr := flag.String("config", "./migrate.config", "config file source")
 	fs.Parse(args)
 
-	data, err := os.ReadFile(*sourcePtr + "/" + "migrate.config")
+	data, err := os.ReadFile(*configSrcPtr)
 	if err != nil {
 		log.Fatal("error opening migrate.config: ", err)
 	}
@@ -80,12 +79,13 @@ func handleMigrate(args []string) {
 
 	var dbURL string
 	if config.ConnURL[0] == '$' {
-		dbURL = os.Getenv(dbURL)
+        dbURL = os.Getenv(config.ConnURL[1:])
+        log.Println(dbURL)
 	} else {
 		dbURL = config.ConnURL
 	}
 
-	migrater, err := internal.NewMigrater(*sourcePtr, dbURL)
+	migrater, err := internal.NewMigrater(config.MigrationSource, dbURL)
 	if err != nil {
 		log.Fatal("error creating migrater")
 	}

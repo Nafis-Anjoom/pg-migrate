@@ -189,7 +189,6 @@ func (m *migrater) RunMigrations(direction Direction) error {
             return err
         }
         log.Printf("version: %d, name: %s, operation: %s\n", migration.version, migration.name, tag)
-        // log.Printf("%s: %s\n", tag, migration.name)
     }
 
     log.Println("transaction finished")
