@@ -200,3 +200,23 @@ func (m *migrater) RunMigrations(direction Direction) error {
 
     return nil
 }
+
+func InitVersionTable(connString string) error {
+    conn, err := pgx.Connect(context.Background(), connString)
+    if err != nil {
+        log.Println("unable to connect to database")
+        return err
+    }
+
+    defer conn.Close(context.Background())
+
+    query := `CREATE TABLE public.versionTable (version INT NOT NULL);`
+
+    _, err = conn.Exec(context.Background(), query)
+    if err != nil {
+        log.Println("error initializing version table:", err)
+        return err
+    }
+
+    return nil
+}

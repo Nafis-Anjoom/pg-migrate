@@ -10,7 +10,7 @@ import (
 
 type Config struct {
 	CurrentVersion  int    `json:"current_version"`
-	ConnURL         string `json:"conn_url"`
+	DatabaseEnv     string `json:"conn_url"`
 	MigrationSource string `json:"migrations_source"`
 }
 
@@ -34,6 +34,7 @@ func main() {
 func handleInit(args []string) {
 	fs := flag.NewFlagSet("init", flag.ExitOnError)
 	sourcePtr := fs.String("source", "./migrations", "Source directory for migrations. If the directory does not exist, the program will automatically create a new one.")
+	databaseEnvPtr := fs.String("databaseEnv", "", "env variable for database connection string")
 	fs.Parse(args)
 
 	err := os.Mkdir(*sourcePtr, 0750)
@@ -41,8 +42,16 @@ func handleInit(args []string) {
 		log.Fatal("error initializing migration directory:", err)
 	}
 
+    connURL := os.Getenv(*databaseEnvPtr)
+    if connURL == "" {
+        log.Fatal("database env variable is empty")
+    }
+
 	var config Config
-    config.MigrationSource = *sourcePtr
+	config.MigrationSource = *sourcePtr
+	// config.VersionTable = *versionTablePtr
+	config.DatabaseEnv = *databaseEnvPtr
+
 	json, err := json.MarshalIndent(config, "", "\t")
 	if err != nil {
 		log.Fatal("error encoding migration config to json:", err)
@@ -53,13 +62,21 @@ func handleInit(args []string) {
 		log.Fatal("error creating migration config file:", err)
 	}
 
+    err = internal.InitVersionTable(connURL)
+    if err != nil {
+        // instead of doing transaction, we simply revert the write file operation
+        os.Remove("./migrate.config")
+        log.Fatal("error initializing version table")
+    }
+
 	log.Println("successfully initialized migraitons directory:", *sourcePtr)
+	log.Println("successfully created version table: versionTable")
 	log.Println(`To get Started, edit the migrate.config file in the current directory. If using env variable, then pass "$ENV_VARIABLE"`)
 }
 
 func handleMigrate(args []string) {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
-    configSrcPtr := flag.String("config", "./migrate.config", "config file source")
+	configSrcPtr := flag.String("config", "./migrate.config", "config file source")
 	fs.Parse(args)
 
 	data, err := os.ReadFile(*configSrcPtr)
@@ -73,19 +90,13 @@ func handleMigrate(args []string) {
 		log.Fatal("invalid config file:", err)
 	}
 
-	if config.ConnURL == "" {
+    connURL := os.Getenv(config.DatabaseEnv)
+
+	if connURL == "" {
 		log.Fatal("missing database url")
 	}
 
-	var dbURL string
-	if config.ConnURL[0] == '$' {
-        dbURL = os.Getenv(config.ConnURL[1:])
-        log.Println(dbURL)
-	} else {
-		dbURL = config.ConnURL
-	}
-
-	migrater, err := internal.NewMigrater(config.MigrationSource, dbURL)
+	migrater, err := internal.NewMigrater(config.MigrationSource, connURL)
 	if err != nil {
 		log.Fatal("error creating migrater")
 	}
