@@ -49,7 +49,6 @@ func handleInit(args []string) {
 
 	var config Config
 	config.MigrationSource = *sourcePtr
-	// config.VersionTable = *versionTablePtr
 	config.DatabaseEnv = *databaseEnvPtr
 
 	json, err := json.MarshalIndent(config, "", "\t")
