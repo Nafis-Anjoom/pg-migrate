@@ -198,7 +198,6 @@ func InitVersionTable(connString string) error {
 
     _, err = conn.Exec(context.Background(), query)
     if err != nil {
-        // log.Println("error initializing version table:", err)
         return fmt.Errorf("%w: %v", databaseExecutionError, err)
     }
 

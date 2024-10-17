@@ -29,52 +29,52 @@ func main() {
 		handleMigrate(os.Args[2:])
 	case "init":
 		handleInit(os.Args[2:])
-    case "create":
-        handleCreate(os.Args[2:])
+	case "create":
+		handleCreate(os.Args[2:])
 	default:
 		fmt.Println("invalid command")
 	}
 }
 
 func handleCreate(args []string) {
-    if len(args) != 1 {
-        fmt.Println("Invalid create command. It only accepts one parameter: name of migration.")
-        return
-    }
-
-    config, err := parseConfig()
-	if err != nil {
-		fmt.Println("error opening migrate.config: ", err)
-        return
+	if len(args) != 1 {
+		fmt.Println("Invalid create command. It only accepts one parameter: name of migration.")
+		return
 	}
 
-    upstreamFileName := fmt.Sprintf("%s/%06d.%s.up.sql",config.MigrationSource, config.CurrentVersion + 1, args[0])
-    downstreamFileName := fmt.Sprintf("%s/%06d.%s.down.sql", config.MigrationSource, config.CurrentVersion + 1, args[0])
+	config, err := parseConfig()
+	if err != nil {
+		fmt.Println("error opening migrate.config: ", err)
+		return
+	}
 
-    _, err = os.Create(upstreamFileName)
-    if err != nil {
-        fmt.Println("Error creating file:", err)
-        return
-    }
+	upstreamFileName := fmt.Sprintf("%s/%06d.%s.up.sql", config.MigrationSource, config.CurrentVersion+1, args[0])
+	downstreamFileName := fmt.Sprintf("%s/%06d.%s.down.sql", config.MigrationSource, config.CurrentVersion+1, args[0])
 
-    _, err = os.Create(downstreamFileName)
-    if err != nil {
-        os.Remove(upstreamFileName)
-        fmt.Println("Error creating file:", err)
-        return
-    }
+	_, err = os.Create(upstreamFileName)
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
 
-    config.CurrentVersion += 1
+	_, err = os.Create(downstreamFileName)
+	if err != nil {
+		os.Remove(upstreamFileName)
+		fmt.Println("Error creating file:", err)
+		return
+	}
+
+	config.CurrentVersion += 1
 	json, err := json.MarshalIndent(config, "", "\t")
 	if err != nil {
 		fmt.Println("error encoding migration config to json:", err)
-        return
+		return
 	}
 
 	err = os.WriteFile("./migrate.config", json, 0660)
 	if err != nil {
 		fmt.Println("error saving migration config file:", err)
-        return
+		return
 	}
 }
 
@@ -87,38 +87,44 @@ func handleInit(args []string) {
 	err := os.Mkdir(*sourcePtr, 0750)
 	if errors.Is(err, fs.ErrExist) {
 		fmt.Println("error initializing migration directory:", err)
-        return
+		return
 	}
 
-    connURL := os.Getenv(*databaseEnvPtr)
-    if connURL == "" {
-        fmt.Println("database env variable is empty")
-        return
-    }
+	connURL := os.Getenv(*databaseEnvPtr)
+	if connURL == "" {
+		fmt.Println("database env variable is empty")
+		return
+	}
 
 	var config Config
 	config.MigrationSource = *sourcePtr
 	config.DatabaseEnv = *databaseEnvPtr
 
-	json, err := json.MarshalIndent(config, "", "\t")
+	err = writeConfig(&config)
 	if err != nil {
 		fmt.Println("error encoding migration config to json:", err)
-        return
+		return
 	}
 
-	err = os.WriteFile("./migrate.config", json, 0660)
+	// json, err := json.MarshalIndent(config, "", "\t")
+	// if err != nil {
+	// 	fmt.Println("error encoding migration config to json:", err)
+	//        return
+	// }
+	//
+	// err = os.WriteFile("./migrate.config", json, 0660)
+	// if err != nil {
+	// 	fmt.Println("error creating migration config file:", err)
+	//        return
+	// }
+
+	err = internal.InitVersionTable(connURL)
 	if err != nil {
-		fmt.Println("error creating migration config file:", err)
-        return
+		// instead of doing transaction, we simply revert the write file operation
+		os.Remove("./migrate.config")
+		fmt.Println("error initializing version table:", err)
+		return
 	}
-
-    err = internal.InitVersionTable(connURL)
-    if err != nil {
-        // instead of doing transaction, we simply revert the write file operation
-        os.Remove("./migrate.config")
-        fmt.Println("error initializing version table:", err)
-        return
-    }
 
 	fmt.Println("successfully initialized migraitons directory:", *sourcePtr)
 	fmt.Println("successfully created version table: versionTable")
@@ -135,27 +141,27 @@ func handleMigrate(args []string) {
 	data, err := os.ReadFile(*configSrcPtr)
 	if err != nil {
 		fmt.Println("error opening migrate.config: ", err)
-        return
+		return
 	}
 
 	var config Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		fmt.Println("invalid config file:", err)
-        return
+		return
 	}
 
-    connURL := os.Getenv(config.DatabaseEnv)
+	connURL := os.Getenv(config.DatabaseEnv)
 
 	if connURL == "" {
 		fmt.Println("missing database url")
-        return
+		return
 	}
 
 	migrater, err := internal.NewMigrater(config.MigrationSource, connURL)
 	if err != nil {
-        fmt.Println("error creating migrater:", err)
-        return
+		fmt.Println("error creating migrater:", err)
+		return
 	}
 
 	migrater.RunMigrations(internal.UP)
@@ -166,28 +172,28 @@ func handleMigrate(args []string) {
 func parseConfig() (*Config, error) {
 	data, err := os.ReadFile(CONFIG_LOCATION)
 	if err != nil {
-        return nil, fmt.Errorf("error opening migrate.config: %w", err)
+		return nil, fmt.Errorf("error opening migrate.config: %w", err)
 	}
 
 	var config Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-        return nil, fmt.Errorf("invalid config file: %w", err)
+		return nil, fmt.Errorf("invalid config file: %w", err)
 	}
 
-    return &config, nil
+	return &config, nil
 }
 
 func writeConfig(config *Config) error {
 	json, err := json.MarshalIndent(config, "", "\t")
 	if err != nil {
-        return fmt.Errorf("error encoding migration config to json: %w", err)
+		return fmt.Errorf("error encoding migration config to json: %w", err)
 	}
 
 	err = os.WriteFile("./migrate.config", json, 0660)
 	if err != nil {
-        return fmt.Errorf("error creating migration config file: %w", err)
+		return fmt.Errorf("error creating migration config file: %w", err)
 	}
 
-    return nil
+	return nil
 }
