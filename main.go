@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"pg-migrate/internal"
 )
@@ -21,7 +20,7 @@ type Config struct {
 
 func main() {
 	if len(os.Args) < 2 {
-		log.Println("invalid command")
+		fmt.Println("invalid command")
 		os.Exit(1)
 	}
 
@@ -167,15 +166,13 @@ func handleMigrate(args []string) {
 func parseConfig() (*Config, error) {
 	data, err := os.ReadFile(CONFIG_LOCATION)
 	if err != nil {
-		log.Fatal("error opening migrate.config: ", err)
-        return nil, err
+        return nil, fmt.Errorf("error opening migrate.config: %w", err)
 	}
 
 	var config Config
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-		log.Fatal("invalid config file:", err)
-        return nil, err
+        return nil, fmt.Errorf("invalid config file: %w", err)
 	}
 
     return &config, nil
@@ -184,12 +181,12 @@ func parseConfig() (*Config, error) {
 func writeConfig(config *Config) error {
 	json, err := json.MarshalIndent(config, "", "\t")
 	if err != nil {
-		log.Fatal("error encoding migration config to json:", err)
+        return fmt.Errorf("error encoding migration config to json: %w", err)
 	}
 
 	err = os.WriteFile("./migrate.config", json, 0660)
 	if err != nil {
-		log.Fatal("error creating migration config file:", err)
+        return fmt.Errorf("error creating migration config file: %w", err)
 	}
 
     return nil
