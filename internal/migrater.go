@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"sort"
 	"strconv"
@@ -21,6 +20,8 @@ const (
     DOWN Direction = false
 )
 
+// TODO: enhance file errors by returning operation and io error via handling pathErrors
+// TODO: enhance database erors by returning user and database via parsing connString
 var (
     fileIsDirectoryError = errors.New("file is a directory")
     fileNotReadableError = errors.New("file is not readable")
@@ -158,7 +159,7 @@ func (m *migrater) RunMigrations(direction Direction) error {
 
     conn, err := pgx.Connect(context.Background(), m.database)
     if err != nil {
-        return fmt.Errorf("%w: user=%s database=%s", databaseConnectionError, conn.Config().User, conn.Config().Database)
+        return databaseConnectionError
     }
 
     defer conn.Close(context.Background())
@@ -188,8 +189,7 @@ func (m *migrater) RunMigrations(direction Direction) error {
 func InitVersionTable(connString string) error {
     conn, err := pgx.Connect(context.Background(), connString)
     if err != nil {
-        log.Println("unable to connect to database")
-        return err
+        return databaseConnectionError
     }
 
     defer conn.Close(context.Background())
@@ -198,8 +198,8 @@ func InitVersionTable(connString string) error {
 
     _, err = conn.Exec(context.Background(), query)
     if err != nil {
-        log.Println("error initializing version table:", err)
-        return err
+        // log.Println("error initializing version table:", err)
+        return fmt.Errorf("%w: %v", databaseExecutionError, err)
     }
 
     return nil
