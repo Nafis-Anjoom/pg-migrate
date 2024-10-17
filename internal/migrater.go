@@ -10,7 +10,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -29,7 +28,7 @@ var (
     directoryNotReadableError = errors.New("directory not readable")
     migrationUnexecutableError = errors.New("unable to execute migration")
     databaseConnectionError = errors.New("unable to connect to database")
-    databaseQueryError = errors.New("unable to execute query")
+    databaseExecutionError = errors.New("unable to execute query")
 )
 
 const OWNER_READ_MASK fs.FileMode = 0400
@@ -159,43 +158,30 @@ func (m *migrater) RunMigrations(direction Direction) error {
 
     conn, err := pgx.Connect(context.Background(), m.database)
     if err != nil {
-        log.Println("unable to connect to database")
-        return err
+        return fmt.Errorf("%w: user=%s database=%s", databaseConnectionError, conn.Config().User, conn.Config().Database)
     }
-    startTime := time.Now()
 
     defer conn.Close(context.Background())
 
     tx, err := conn.Begin(context.Background())
     if err != nil {
-        log.Println("error starting transaction")
-        return err
+        return fmt.Errorf("%w: cannot start transaction", databaseExecutionError)
     }
-
-    log.Println("transaction started")
 
     for _, migration := range migrations {
         sql, err := os.ReadFile(m.source + "/" + migration.fileName)
         if err != nil {
-            log.Println("unable to read file:", migration.fileName, "error:", err)
-            return err
+            return fmt.Errorf("%w: %s", fileNotReadableError, migration.fileName)
         }
 
-        tag, err := tx.Exec(context.Background(), string(sql))
+        _, err = tx.Exec(context.Background(), string(sql))
         if err != nil {
-            log.Println("unable to execute:", migration.fileName, "error:", err)
-            return err
+            return fmt.Errorf("%w: %s", databaseExecutionError, migration.fileName) 
         }
-        log.Printf("version: %d, name: %s, operation: %s\n", migration.version, migration.name, tag)
     }
 
-    log.Println("transaction finished")
     tx.Commit(context.Background())
-    log.Println("transaction committed")
     
-    elapsed := time.Since(startTime)
-    log.Printf("Elapsed time: %s\n", elapsed)
-
     return nil
 }
 
