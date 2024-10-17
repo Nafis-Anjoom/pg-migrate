@@ -152,7 +152,7 @@ func handleMigrate(args []string) {
 		return
 	}
 
-	migrater.RunMigrations(internal.UP)
+    migrater.RunUpstreamMigrations(0, 99)
 }
 
 /* Utils */
