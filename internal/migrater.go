@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -65,7 +66,6 @@ type migrater struct{
 func NewMigrater (source, database string) (*migrater, error) {
     files, err := os.ReadDir(source)
     if err != nil {
-        log.Println("error reading directory:", source)
         return nil, err
     }
 
@@ -96,32 +96,28 @@ func NewMigrater (source, database string) (*migrater, error) {
 }
 
 func parseMigrationEntry(source, fileName string) (*migration, error) {
-    fi, err := os.Lstat(source + "/" + fileName)
+    fileSrc := source + "/" + fileName
+    fi, err := os.Lstat(fileSrc)
     if err != nil {
-        log.Println(err)
-        return nil, err
+        return nil, fmt.Errorf("%w: %s", fileNotReadableError, fileSrc)
     }
 
     if fi.IsDir() {
-        log.Println("file is a directory:", fileName)
-        return nil, fileIsDirectoryError
+        return nil, fmt.Errorf("%w: %s", fileIsDirectoryError, fileSrc)
     }
 
     if fi.Mode() & OWNER_READ_MASK != OWNER_READ_MASK {
-        log.Println("file not readable:", fileName)
-        return nil, fileNotReadableError
+        return nil, fmt.Errorf("%w: %s", fileNotReadableError, fileSrc)
     }
 
     parts := strings.Split(fileName, ".")
     if len(parts) != 4 {
-        log.Println("invalid migration file:", fileName)
-        return nil, invalidMigrationNameError
+        return nil, fmt.Errorf("%w: %s. Invalid migration naming scheme", invalidMigrationNameError, fileSrc)
     }
 
     version, err := strconv.ParseInt(parts[0], 10, 64)
     if err != nil {
-        log.Println("invalid version:", fileName)
-        return nil, invalidMigrationNameError
+        return nil, fmt.Errorf("%w: %s. Invalid migration versioning", invalidMigrationNameError, fileSrc)
     }
 
     name := parts[1]
@@ -133,13 +129,11 @@ func parseMigrationEntry(source, fileName string) (*migration, error) {
     case "down":
         direction = DOWN
     default:
-        log.Println("invalid migration direction:", fileName)
-        return nil, invalidMigrationNameError
+        return nil, fmt.Errorf("%w: %s. Invalid stream direction", invalidMigrationNameError, fileSrc)
     }
 
     if parts[3] != "sql" {
-        log.Println("invalid file type:", fileName)
-        return nil,invalidMigrationNameError 
+        return nil, fmt.Errorf("%w: %s. Invalid file extension", invalidMigrationNameError, fileSrc)
     }
 
     migration := &migration {
