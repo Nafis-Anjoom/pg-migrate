@@ -16,18 +16,22 @@ import (
 
 type Direction bool
 
-var (
+const (
     UP Direction = true
     DOWN Direction = false
 )
 
 var (
-    fileDirectoryError = errors.New("file is a directory")
+    fileIsDirectoryError = errors.New("file is a directory")
     fileNotReadableError = errors.New("file is not readable")
     invalidMigrationNameError = errors.New("invalid migration naming")
+    directoryNotReadableError = errors.New("directory not readable")
+    migrationUnexecutableError = errors.New("unable to execute migration")
+    databaseConnectionError = errors.New("unable to connect to database")
+    databaseQueryError = errors.New("unable to execute query")
 )
 
-var OWNER_READ_MASK fs.FileMode = 0400
+const OWNER_READ_MASK fs.FileMode = 0400
 
 type migration struct{
     fileName string
@@ -100,7 +104,7 @@ func parseMigrationEntry(source, fileName string) (*migration, error) {
 
     if fi.IsDir() {
         log.Println("file is a directory:", fileName)
-        return nil, fileDirectoryError
+        return nil, fileIsDirectoryError
     }
 
     if fi.Mode() & OWNER_READ_MASK != OWNER_READ_MASK {
