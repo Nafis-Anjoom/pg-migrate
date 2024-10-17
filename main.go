@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"pg-migrate/internal"
@@ -25,9 +26,54 @@ func main() {
 		handleMigrate(os.Args[2:])
 	case "init":
 		handleInit(os.Args[2:])
+    case "create":
+        handleCreate(os.Args[2:])
 	default:
 		log.Println("invalid command")
 		os.Exit(1)
+	}
+}
+
+func handleCreate(args []string) {
+    if len(args) != 1 {
+        log.Fatal("Invalid create command. It only accepts one parameter: name of migration.")
+        os.Exit(1)
+    }
+
+	data, err := os.ReadFile("./migrate.config")
+	if err != nil {
+		log.Fatal("error opening migrate.config: ", err)
+	}
+
+	var config Config
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		log.Fatal("invalid config file:", err)
+	}
+
+    upstreamFileName := fmt.Sprintf("%s/%06d.%s.up.sql",config.MigrationSource, config.CurrentVersion + 1, args[0])
+    downstreamFileName := fmt.Sprintf("%s/%06d.%s.down.sql", config.MigrationSource, config.CurrentVersion + 1, args[0])
+
+    _, err = os.Create(upstreamFileName)
+    if err != nil {
+        log.Fatal("Error creating file:", err)
+    }
+
+    _, err = os.Create(downstreamFileName)
+    if err != nil {
+        os.Remove(upstreamFileName)
+        log.Fatal("Error creating file:", err)
+    }
+
+    config.CurrentVersion += 1
+	json, err := json.MarshalIndent(config, "", "\t")
+	if err != nil {
+		log.Fatal("error encoding migration config to json:", err)
+	}
+
+	err = os.WriteFile("./migrate.config", json, 0660)
+	if err != nil {
+		log.Fatal("error saving migration config file:", err)
 	}
 }
 
