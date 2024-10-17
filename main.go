@@ -106,18 +106,6 @@ func handleInit(args []string) {
 		return
 	}
 
-	// json, err := json.MarshalIndent(config, "", "\t")
-	// if err != nil {
-	// 	fmt.Println("error encoding migration config to json:", err)
-	//        return
-	// }
-	//
-	// err = os.WriteFile("./migrate.config", json, 0660)
-	// if err != nil {
-	// 	fmt.Println("error creating migration config file:", err)
-	//        return
-	// }
-
 	err = internal.InitVersionTable(connURL)
 	if err != nil {
 		// instead of doing transaction, we simply revert the write file operation
