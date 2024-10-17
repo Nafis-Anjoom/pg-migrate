@@ -9,6 +9,8 @@ import (
 	"pg-migrate/internal"
 )
 
+const CONFIG_LOCATION string = "./migrate.config"
+
 type Config struct {
 	CurrentVersion  int    `json:"current_version"`
 	DatabaseEnv     string `json:"conn_url"`
@@ -40,15 +42,10 @@ func handleCreate(args []string) {
         os.Exit(1)
     }
 
-	data, err := os.ReadFile("./migrate.config")
+    config, err := parseConfig()
 	if err != nil {
 		log.Fatal("error opening migrate.config: ", err)
-	}
-
-	var config Config
-	err = json.Unmarshal(data, &config)
-	if err != nil {
-		log.Fatal("invalid config file:", err)
+        os.Exit(1)
 	}
 
     upstreamFileName := fmt.Sprintf("%s/%06d.%s.up.sql",config.MigrationSource, config.CurrentVersion + 1, args[0])
@@ -119,6 +116,8 @@ func handleInit(args []string) {
 	log.Println(`To get Started, edit the migrate.config file in the current directory. If using env variable, then pass "$ENV_VARIABLE"`)
 }
 
+// TODO: investigate if config flag is needed
+// TODO: refactor to use parseConfig function
 func handleMigrate(args []string) {
 	fs := flag.NewFlagSet("migrate", flag.ExitOnError)
 	configSrcPtr := flag.String("config", "./migrate.config", "config file source")
@@ -147,4 +146,37 @@ func handleMigrate(args []string) {
 	}
 
 	migrater.RunMigrations(internal.UP)
+}
+
+/* Utils */
+
+func parseConfig() (*Config, error) {
+	data, err := os.ReadFile(CONFIG_LOCATION)
+	if err != nil {
+		log.Fatal("error opening migrate.config: ", err)
+        return nil, err
+	}
+
+	var config Config
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		log.Fatal("invalid config file:", err)
+        return nil, err
+	}
+
+    return &config, nil
+}
+
+func writeConfig(config *Config) error {
+	json, err := json.MarshalIndent(config, "", "\t")
+	if err != nil {
+		log.Fatal("error encoding migration config to json:", err)
+	}
+
+	err = os.WriteFile("./migrate.config", json, 0660)
+	if err != nil {
+		log.Fatal("error creating migration config file:", err)
+	}
+
+    return nil
 }
