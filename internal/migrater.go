@@ -241,3 +241,23 @@ func InitVersionTable(connString string) error {
 
 	return nil
 }
+
+func GetVersion(connString string) (int, error) {
+	conn, err := pgx.Connect(context.Background(), connString)
+	if err != nil {
+		return -1, databaseConnectionError
+	}
+
+	defer conn.Close(context.Background())
+
+    query := "SELECT version FROM public.versiontable LIMIT 1;"
+
+    output := -1
+    row := conn.QueryRow(context.Background(), query)
+    err = row.Scan(&output)
+	if err != nil {
+        return -1, fmt.Errorf("%w: %s", databaseExecutionError, "unable to get version number")
+	}
+
+    return output, nil
+}
