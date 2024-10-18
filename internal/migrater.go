@@ -161,7 +161,7 @@ func (m *migrater) RunUpstreamMigrations(start, end int) error {
 		return fmt.Errorf("%w: cannot start transaction", databaseExecutionError)
 	}
 
-	for _, migration := range migrations[start : end+1] {
+	for _, migration := range migrations[start : end] {
 		sql, err := os.ReadFile(m.source + "/" + migration.fileName)
 		if err != nil {
 			return fmt.Errorf("%w: %s", fileNotReadableError, migration.fileName)
@@ -180,7 +180,7 @@ func (m *migrater) RunUpstreamMigrations(start, end int) error {
 
 func (m *migrater) RunDownstreamMigrations(start, end int) error {
 	migrations := m.downMigrations
-	sort.Sort(sort.Reverse(migrations))
+	sort.Sort(migrations)
 
 	conn, err := pgx.Connect(context.Background(), m.database)
 	if err != nil {
@@ -194,7 +194,9 @@ func (m *migrater) RunDownstreamMigrations(start, end int) error {
 		return fmt.Errorf("%w: cannot start transaction", databaseExecutionError)
 	}
 
-	for _, migration := range migrations {
+    for ;start > end; start-- {
+	// for _, migration := range migrations {
+        migration := *migrations[start - 1]
 		sql, err := os.ReadFile(m.source + "/" + migration.fileName)
 		if err != nil {
 			return fmt.Errorf("%w: %s", fileNotReadableError, migration.fileName)
