@@ -89,16 +89,16 @@ func handleInit(args []string) {
 	databaseEnvPtr := flagSet.String("database", "", "Env variable for database connection string")
 	flagSet.Parse(args)
 
+	connURL := os.Getenv(*databaseEnvPtr)
+	if connURL == "" {
+		fmt.Println("Database env variable is empty")
+		return
+	}
+
 	err := os.Mkdir(*sourcePtr, 0750)
 	if errors.Is(err, fs.ErrExist) {
         fmt.Println("Could not initialize migration directory")
         fmt.Println("\t", err)
-		return
-	}
-
-	connURL := os.Getenv(*databaseEnvPtr)
-	if connURL == "" {
-		fmt.Println("Database env variable is empty")
 		return
 	}
 
@@ -108,12 +108,14 @@ func handleInit(args []string) {
 
 	err = writeConfig(&config)
 	if err != nil {
+        os.Remove(*sourcePtr)
 		fmt.Println("Error encoding migration config to json:", err)
 		return
 	}
 
 	err = internal.InitVersionTable(connURL)
 	if err != nil {
+        os.Remove(*sourcePtr)
 		os.Remove("./migrate.config")
 		fmt.Println("Error initializing version table:", err)
 		return
