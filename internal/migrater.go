@@ -161,7 +161,7 @@ func (m *migrater) RunUpstreamMigrations(start, end int) error {
 		return fmt.Errorf("%w: cannot start transaction", databaseExecutionError)
 	}
 
-	for _, migration := range migrations[start : end] {
+	for _, migration := range migrations[start:end] {
 		sql, err := os.ReadFile(m.source + "/" + migration.fileName)
 		if err != nil {
 			return fmt.Errorf("%w: %s", fileNotReadableError, migration.fileName)
@@ -171,6 +171,12 @@ func (m *migrater) RunUpstreamMigrations(start, end int) error {
 		if err != nil {
 			return fmt.Errorf("%w: %s", databaseExecutionError, migration.fileName)
 		}
+	}
+
+	updateVTableQuery := "update public.versiontable set version = $1"
+	_, err = tx.Exec(context.Background(), updateVTableQuery, end)
+	if err != nil {
+		return fmt.Errorf("%w: %s", databaseExecutionError, "could not update version table")
 	}
 
 	tx.Commit(context.Background())
@@ -194,9 +200,8 @@ func (m *migrater) RunDownstreamMigrations(start, end int) error {
 		return fmt.Errorf("%w: cannot start transaction", databaseExecutionError)
 	}
 
-    for ;start > end; start-- {
-	// for _, migration := range migrations {
-        migration := *migrations[start - 1]
+	for ; start > end; start-- {
+		migration := *migrations[start-1]
 		sql, err := os.ReadFile(m.source + "/" + migration.fileName)
 		if err != nil {
 			return fmt.Errorf("%w: %s", fileNotReadableError, migration.fileName)
@@ -206,6 +211,12 @@ func (m *migrater) RunDownstreamMigrations(start, end int) error {
 		if err != nil {
 			return fmt.Errorf("%w: %s", databaseExecutionError, migration.fileName)
 		}
+	}
+
+	updateVTableQuery := "update public.versiontable set version = $1"
+	_, err = tx.Exec(context.Background(), updateVTableQuery, end)
+	if err != nil {
+		return fmt.Errorf("%w: %s", databaseExecutionError, "could not update version table")
 	}
 
 	tx.Commit(context.Background())
@@ -221,7 +232,7 @@ func InitVersionTable(connString string) error {
 
 	defer conn.Close(context.Background())
 
-	query := `CREATE TABLE public.versionTable (version INT NOT NULL);`
+	query := `CREATE TABLE public.versionTable (version INT NOT NULL); INSERT INTO public.versionTable (version) VALUES (0);`
 
 	_, err = conn.Exec(context.Background(), query)
 	if err != nil {
