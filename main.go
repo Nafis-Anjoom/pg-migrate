@@ -211,12 +211,14 @@ func handleMigrate(args []string) {
     if migrationErr != nil {
         fmt.Println("Migration error")
         fmt.Println("\t", migrationErr)
+        return
     }
 
     config.CurrentVersion = end
     err = writeConfig(config)
     if err != nil {
         fmt.Println("Error writing config file:", err)
+        return
     }
 }
 
