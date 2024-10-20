@@ -50,3 +50,4 @@ Clone the repo and install using go cli
 2. Refactor code to handle errors elegantly
 3. Potentially improve performance by using a more lightweight driver
 4. Come up with a compression algorithm to potentially store all the migration files in a database efficiently
+5. Explore migration generation using LLM
