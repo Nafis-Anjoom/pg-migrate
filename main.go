@@ -20,6 +20,8 @@ type Config struct {
 	MigrationSource string `json:"migrations_source"`
 }
 
+// TODO: refactor code to use filepath.join instead of string concat to make os agnostic
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("invalid command")
