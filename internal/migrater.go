@@ -96,6 +96,7 @@ func NewMigrater(source, database string) (*migrater, error) {
 
 func parseMigrationEntry(source, fileName string) (*migration, error) {
 	fileSrc := source + "/" + fileName
+    // TODO: Lstat is expensive. Explore filepath.Walkdir vs filepath.Walk
 	fi, err := os.Lstat(fileSrc)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s", fileNotReadableError, fileSrc)
