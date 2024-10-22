@@ -28,6 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
+    // TODO: handle non-flag arguments
 	switch os.Args[1] {
 	case "migrate":
 		handleMigrate(os.Args[2:])
